@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pembuat Gambar Acak</title>
+    <!-- Tailwind CSS CDN untuk styling yang mudah -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Mengatur font Inter secara default */
+        body {
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #f0f4f8; /* Warna latar belakang yang lembut */
+            color: #333;
+            padding: 20px;
+        }
+        canvas {
+            border: 2px solid #cbd5e0; /* Border abu-abu muda */
+            border-radius: 12px; /* Sudut membulat */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* Bayangan lembut */
+            background-color: #ffffff; /* Latar belakang kanvas putih */
+            max-width: 100%; /* Memastikan kanvas responsif */
+            height: auto;
+        }
+        .controls {
+            background-color: #ffffff;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            width: 100%;
+            max-width: 600px;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        label {
+            font-weight: 600;
+            color: #4a5568; /* Warna teks label */
+        }
+        select, input[type="number"], input[type="color"] {
+            padding: 10px 12px;
+            border: 1px solid #e2e8f0; /* Border input */
+            border-radius: 8px;
+            font-size: 1rem;
+            color: #2d3748;
+            background-color: #f7fafc; /* Latar belakang input */
+            transition: border-color 0.2s ease-in-out;
+        }
+        select:focus, input[type="number"]:focus, input[type="color"]:focus {
+            outline: none;
+            border-color: #6366f1; /* Warna border saat fokus */
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2); /* Bayangan saat fokus */
+        }
+        button {
+            background-color: #6366f1; /* Warna tombol utama */
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.1s ease;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        button:hover {
+            background-color: #4f46e5; /* Warna tombol saat hover */
+            transform: translateY(-2px); /* Efek sedikit naik saat hover */
+        }
+        button:active {
+            transform: translateY(0); /* Efek tekan saat aktif */
+        }
+        .download-button {
+            background-color: #10b981; /* Warna tombol unduh */
+        }
+        .download-button:hover {
+            background-color: #059669;
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3; /* Light grey */
+            border-top: 4px solid #6366f1; /* Blue */
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            display: none; /* Hidden by default */
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .button-row {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+        }
+
+        /* Responsif untuk layar kecil */
+        @media (min-width: 640px) {
+            .controls {
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: space-between;
+            }
+            .control-group {
+                flex: 1 1 calc(50% - 8px); /* Dua kolom pada layar yang lebih besar */
+            }
+            .button-row {
+                width: 100%;
+                justify-content: flex-end; /* Tombol di kanan bawah */
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1 class="text-4xl font-extrabold text-gray-900 mb-8">Pembuat Gambar Abstrak Acak</h1>
+
+    <canvas id="randomImageCanvas" width="4096" height="4096"></canvas>
+
+    <div class="controls">
+        <div class="control-group">
+            <label for="patternType">Jenis Pola:</label>
+            <select id="patternType" class="w-full">
+                <option value="abstract-lines">Garis Abstrak (Default)</option>
+                <option value="geometric">Geometris</option>
+                <option value="maze-like">Labirin (mirip)</option>
+                <option value="bamboo">Bambu</option>
+                <option value="batik-abstract">Batik (abstrak)</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label for="colorRange">Rentang Warna:</label>
+            <select id="colorRange" class="w-full">
+                <option value="blue-purple">Biru-Ungu (Default)</option>
+                <option value="green-yellow">Hijau-Kuning</option>
+                <option value="red-orange">Merah-Oranye</option>
+                <option value="grayscale">Skala Abu-abu</option>
+                <option value="custom">Kustom</option>
+            </select>
+        </div>
+
+        <div class="control-group" id="customColorGroup" style="display: none;">
+            <label for="startColor">Warna Awal Kustom:</label>
+            <input type="color" id="startColor" value="#0000FF" class="w-full">
+            <label for="endColor">Warna Akhir Kustom:</label>
+            <input type="color" id="endColor" value="#800080" class="w-full">
+        </div>
+
+        <div class="control-group">
+            <label for="lineCount">Jumlah Elemen:</label>
+            <input type="number" id="lineCount" value="500" min="10" max="2000" class="w-full">
+        </div>
+
+        <div class="control-group">
+            <label for="lineWidth">Ukuran Elemen (px):</label>
+            <input type="number" id="lineWidth" value="2" min="1" max="10" class="w-full">
+        </div>
+
+        <div class="button-row">
+            <button id="generateButton" class="flex items-center justify-center">
+                Acak Pola
+                <div id="spinner" class="loading-spinner"></div>
+            </button>
+            <button id="downloadButton" class="download-button">Unduh Gambar</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('randomImageCanvas');
+        const ctx = canvas.getContext('2d');
+        const generateButton = document.getElementById('generateButton');
+        const downloadButton = document.getElementById('downloadButton');
+        const patternTypeSelect = document.getElementById('patternType');
+        const colorRangeSelect = document.getElementById('colorRange');
+        const customColorGroup = document.getElementById('customColorGroup');
+        const startColorInput = document.getElementById('startColor');
+        const endColorInput = document.getElementById('endColor');
+        const lineCountInput = document.getElementById('lineCount');
+        const lineWidthInput = document.getElementById('lineWidth');
+        const spinner = document.getElementById('spinner');
+
+        // Fungsi untuk mengonversi nilai heksadesimal ke RGB
+        function hexToRgb(hex) {
+            const r = parseInt(hex.substring(1, 3), 16);
+            const g = parseInt(hex.substring(3, 5), 16);
+            const b = parseInt(hex.substring(5, 7), 16);
+            return { r, g, b };
+        }
+
+        // Fungsi untuk menginterpolasi warna
+        function interpolateColor(color1, color2, factor) {
+            const result = {
+                r: Math.round(color1.r + factor * (color2.r - color1.r)),
+                g: Math.round(color1.g + factor * (color2.g - color1.g)),
+                b: Math.round(color1.b + factor * (color2.b - color1.b))
+            };
+            return `rgb(${result.r}, ${result.g}, ${result.b})`;
+        }
+
+        // Fungsi untuk mendapatkan warna awal dan akhir berdasarkan pilihan
+        function getColors() {
+            let startColorHex, endColorHex;
+            const selectedRange = colorRangeSelect.value;
+
+            switch (selectedRange) {
+                case 'blue-purple':
+                    startColorHex = '#0000FF'; // Biru
+                    endColorHex = '#800080'; // Ungu
+                    break;
+                case 'green-yellow':
+                    startColorHex = '#00FF00'; // Hijau
+                    endColorHex = '#FFFF00'; // Kuning
+                    break;
+                case 'red-orange':
+                    startColorHex = '#FF0000'; // Merah
+                    endColorHex = '#FFA500'; // Oranye
+                    break;
+                case 'grayscale':
+                    startColorHex = '#000000'; // Hitam
+                    endColorHex = '#FFFFFF'; // Putih
+                    break;
+                case 'custom':
+                    startColorHex = startColorInput.value;
+                    endColorHex = endColorInput.value;
+                    break;
+            }
+            return { start: hexToRgb(startColorHex), end: hexToRgb(endColorHex) };
+        }
+
+        // --- Fungsi Penggambar Pola ---
+
+        function drawAbstractLines(width, height, count, size, startColorRgb, endColorRgb) {
+            for (let i = 0; i < count; i++) {
+                const x1 = Math.random() * width * 1.5 - width * 0.25;
+                const y1 = Math.random() * height * 1.5 - height * 0.25;
+                const x2 = Math.random() * width * 1.5 - width * 0.25;
+                const y2 = Math.random() * height * 1.5 - height * 0.25;
+
+                const cx1 = Math.random() * width;
+                const cy1 = Math.random() * height;
+                const cx2 = Math.random() * width;
+                const cy2 = Math.random() * height;
+
+                const colorFactor = Math.random();
+                ctx.strokeStyle = interpolateColor(startColorRgb, endColorRgb, colorFactor);
+                ctx.lineWidth = size;
+                ctx.lineCap = 'round';
+
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.bezierCurveTo(cx1, cy1, cx2, cy2, x2, y2);
+                ctx.stroke();
+            }
+        }
+
+        function drawGeometricPattern(width, height, count, size, startColorRgb, endColorRgb) {
+            const gridSize = Math.max(50, width / (Math.sqrt(count) * 2)); // Ukuran grid adaptif
+            const elementSize = Math.max(size * 5, 10); // Ukuran elemen minimal
+
+            for (let i = 0; i < count; i++) {
+                const x = Math.random() * width;
+                const y = Math.random() * height;
+                const colorFactor = Math.random();
+                ctx.fillStyle = interpolateColor(startColorRgb, endColorRgb, colorFactor);
+                ctx.strokeStyle = interpolateColor(startColorRgb, endColorRgb, 1 - colorFactor);
+                ctx.lineWidth = size;
+
+                const shapeType = Math.floor(Math.random() * 3); // 0: square, 1: circle, 2: triangle
+
+                ctx.beginPath();
+                if (shapeType === 0) { // Square
+                    ctx.rect(x - elementSize / 2, y - elementSize / 2, elementSize, elementSize);
+                } else if (shapeType === 1) { // Circle
+                    ctx.arc(x, y, elementSize / 2, 0, Math.PI * 2);
+                } else { // Triangle
+                    const triangleSize = elementSize * 1.2;
+                    ctx.moveTo(x, y - triangleSize / 2);
+                    ctx.lineTo(x + triangleSize / 2, y + triangleSize / 2);
+                    ctx.lineTo(x - triangleSize / 2, y + triangleSize / 2);
+                    ctx.closePath();
+                }
+                ctx.fill();
+                ctx.stroke();
+            }
+        }
+
+        function drawMazeLikePattern(width, height, count, size, startColorRgb, endColorRgb) {
+            const cellSize = Math.max(20, size * 10); // Ukuran sel labirin
+            ctx.lineWidth = size;
+            ctx.lineCap = 'square';
+
+            for (let i = 0; i < count; i++) {
+                const x = Math.floor(Math.random() * (width / cellSize)) * cellSize;
+                const y = Math.floor(Math.random() * (height / cellSize)) * cellSize;
+
+                const colorFactor = Math.random();
+                ctx.strokeStyle = interpolateColor(startColorRgb, endColorRgb, colorFactor);
+
+                ctx.beginPath();
+                if (Math.random() < 0.5) { // Vertical wall
+                    ctx.moveTo(x + cellSize, y);
+                    ctx.lineTo(x + cellSize, y + cellSize);
+                } else { // Horizontal wall
+                    ctx.moveTo(x, y + cellSize);
+                    ctx.lineTo(x + cellSize, y + cellSize);
+                }
+                ctx.stroke();
+            }
+        }
+
+        function drawBambooPattern(width, height, count, size, startColorRgb, endColorRgb) {
+            const segmentHeight = Math.max(50, size * 20); // Tinggi segmen bambu
+            const stalkWidth = Math.max(size, 2); // Lebar batang bambu
+
+            for (let i = 0; i < count; i++) {
+                const x = Math.random() * width;
+                const y = Math.random() * height;
+
+                const colorFactor = Math.random();
+                ctx.strokeStyle = interpolateColor(startColorRgb, endColorRgb, colorFactor);
+                ctx.lineWidth = stalkWidth;
+                ctx.lineCap = 'round';
+
+                // Draw main vertical stalk
+                ctx.beginPath();
+                ctx.moveTo(x, y - segmentHeight / 2);
+                ctx.lineTo(x, y + segmentHeight / 2);
+                ctx.stroke();
+
+                // Draw horizontal "knots"
+                if (Math.random() < 0.7) { // Chance to draw a knot
+                    const knotY = y + (Math.random() - 0.5) * segmentHeight;
+                    const knotLength = stalkWidth * (1 + Math.random());
+                    ctx.beginPath();
+                    ctx.moveTo(x - knotLength / 2, knotY);
+                    ctx.lineTo(x + knotLength / 2, knotY);
+                    ctx.stroke();
+                }
+            }
+        }
+
+        function drawBatikAbstractPattern(width, height, count, size, startColorRgb, endColorRgb) {
+            const baseSize = Math.max(10, size * 5); // Ukuran dasar elemen batik
+            ctx.lineWidth = Math.max(1, size / 2); // Lebar garis yang lebih halus
+
+            for (let i = 0; i < count; i++) {
+                const x = Math.random() * width;
+                const y = Math.random() * height;
+                const colorFactor = Math.random();
+                ctx.strokeStyle = interpolateColor(startColorRgb, endColorRgb, colorFactor);
+                ctx.fillStyle = interpolateColor(startColorRgb, endColorRgb, 1 - colorFactor);
+                ctx.globalAlpha = 0.6 + Math.random() * 0.4; // Transparansi acak
+
+                const shapeType = Math.floor(Math.random() * 3); // 0: circle, 1: wavy line, 2: dot cluster
+
+                ctx.beginPath();
+                if (shapeType === 0) { // Abstract circle/blob
+                    ctx.arc(x, y, baseSize * (0.5 + Math.random()), 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                } else if (shapeType === 1) { // Wavy line
+                    const waveLength = baseSize * (2 + Math.random() * 3);
+                    const waveAmplitude = baseSize * (0.1 + Math.random() * 0.5);
+                    const angle = Math.random() * Math.PI * 2;
+                    const dx = Math.cos(angle);
+                    const dy = Math.sin(angle);
+
+                    ctx.moveTo(x, y);
+                    for (let j = 0; j < 5; j++) {
+                        const nextX = x + dx * waveLength * (j + 1);
+                        const nextY = y + dy * waveLength * (j + 1);
+                        const cp1x = x + dx * waveLength * j + dy * waveAmplitude * (Math.random() - 0.5) * 2;
+                        const cp1y = y + dy * waveLength * j - dx * waveAmplitude * (Math.random() - 0.5) * 2;
+                        const cp2x = x + dx * waveLength * (j + 0.5) + dy * waveAmplitude * (Math.random() - 0.5) * 2;
+                        const cp2y = y + dy * waveLength * (j + 0.5) - dx * waveAmplitude * (Math.random() - 0.5) * 2;
+                        ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, nextX, nextY);
+                    }
+                    ctx.stroke();
+                } else { // Dot cluster
+                    const numDots = Math.floor(5 + Math.random() * 15);
+                    for (let k = 0; k < numDots; k++) {
+                        const dotX = x + (Math.random() - 0.5) * baseSize * 2;
+                        const dotY = y + (Math.random() - 0.5) * baseSize * 2;
+                        const dotRadius = Math.max(1, size * (0.2 + Math.random() * 0.5));
+                        ctx.beginPath();
+                        ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+            ctx.globalAlpha = 1.0; // Reset alpha
+        }
+
+        // Fungsi utama untuk menggambar gambar acak
+        function drawRandomImage() {
+            spinner.style.display = 'inline-block'; // Tampilkan spinner
+            generateButton.disabled = true; // Nonaktifkan tombol saat menggambar
+
+            // Mengatur resolusi tinggi untuk output
+            const width = canvas.width;
+            const height = canvas.height;
+
+            // Mengisi latar belakang dengan warna awal
+            const colors = getColors();
+            const startColorRgb = colors.start;
+            const endColorRgb = colors.end;
+
+            // Menggambar gradien latar belakang
+            const gradient = ctx.createLinearGradient(0, 0, width, height);
+            gradient.addColorStop(0, interpolateColor(startColorRgb, endColorRgb, 0));
+            gradient.addColorStop(1, interpolateColor(startColorRgb, endColorRgb, 1));
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, width, height);
+
+            const count = parseInt(lineCountInput.value); // Jumlah elemen
+            const size = parseInt(lineWidthInput.value); // Ukuran elemen
+
+            const selectedPattern = patternTypeSelect.value;
+
+            switch (selectedPattern) {
+                case 'abstract-lines':
+                    drawAbstractLines(width, height, count, size, startColorRgb, endColorRgb);
+                    break;
+                case 'geometric':
+                    drawGeometricPattern(width, height, count, size, startColorRgb, endColorRgb);
+                    break;
+                case 'maze-like':
+                    drawMazeLikePattern(width, height, count, size, startColorRgb, endColorRgb);
+                    break;
+                case 'bamboo':
+                    drawBambooPattern(width, height, count, size, startColorRgb, endColorRgb);
+                    break;
+                case 'batik-abstract':
+                    drawBatikAbstractPattern(width, height, count, size, startColorRgb, endColorRgb);
+                    break;
+                default:
+                    drawAbstractLines(width, height, count, size, startColorRgb, endColorRgb);
+            }
+
+            spinner.style.display = 'none'; // Sembunyikan spinner
+            generateButton.disabled = false; // Aktifkan kembali tombol
+        }
+
+        // Fungsi untuk mengunduh gambar
+        function downloadImage() {
+            // Gambar akan diunduh dengan dimensi piksel 4096x4096.
+            // Meskipun canvas.toDataURL() tidak secara langsung menyematkan metadata DPI,
+            // nama file akan mencantumkan "300dpi" sebagai indikasi.
+            // Untuk memastikan DPI saat mencetak, Anda dapat menentukan 300 DPI di pengaturan printer
+            // atau menggunakan perangkat lunak pengolah gambar setelah mengunduh.
+
+            const dataURL = canvas.toDataURL('image/jpeg', 1.0); // Kualitas 1.0 (maksimum)
+            const a = document.createElement('a');
+            a.href = dataURL;
+            a.download = `gambar_acak_${patternTypeSelect.value}_4096x4096_300dpi_${Date.now()}.jpg`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        // Event listener untuk tombol "Acak Pola"
+        generateButton.addEventListener('click', drawRandomImage);
+
+        // Event listener untuk tombol "Unduh Gambar"
+        downloadButton.addEventListener('click', downloadImage);
+
+        // Event listener untuk perubahan rentang warna
+        colorRangeSelect.addEventListener('change', (event) => {
+            if (event.target.value === 'custom') {
+                customColorGroup.style.display = 'flex';
+            } else {
+                customColorGroup.style.display = 'none';
+            }
+        });
+
+        // Event listener untuk perubahan jenis pola
+        patternTypeSelect.addEventListener('change', drawRandomImage);
+
+
+        // Gambar awal saat halaman dimuat
+        window.onload = drawRandomImage;
+    </script>
+</body>
+</html>
